@@ -13,9 +13,9 @@ export const initDB = async () => {
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             email TEXT NOT NULL UNIQUE CHECK (email = LOWER(email)),
-            password TEXT NOT NULL CHECK (LENGTH(password) >= 6),
+            password TEXT NOT NULL,
             phone TEXT NOT NULL,
-            role TEXT CHECK (role IN ('admin', 'customer')) NOT NULL
+            role TEXT 
         );
     `);
     // Vehicles table
