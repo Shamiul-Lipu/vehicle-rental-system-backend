@@ -39,7 +39,24 @@ const updateUser = async (req: Request, res: Response) => {
   }
 };
 
+const deleteUser = async (req: Request, res: Response) => {
+  try {
+    await UsersServices.deleteUser(req.user, req.params.userId as string);
+    res.status(200).json({
+      success: true,
+      message: "User deleted successfully",
+    });
+  } catch (err: any) {
+    res.status(400).json({
+      success: false,
+      message: err.message || "Users delete failed",
+      errors: err.constraint || err.message,
+    });
+  }
+};
+
 export const UsersControllers = {
   getUsers,
   updateUser,
+  deleteUser,
 };
