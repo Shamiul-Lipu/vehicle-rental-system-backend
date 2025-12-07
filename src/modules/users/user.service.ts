@@ -20,7 +20,7 @@ const updateUser = async (
   const isAdmin = user.role === "admin";
   const isCustomer = user.role === "customer";
 
-  if (isCustomer && user.id !== paramsUserId) {
+  if (isCustomer && String(user.id) !== paramsUserId) {
     throw new Error("Customers can only update their own profile.");
   }
 
@@ -79,15 +79,6 @@ const updateUser = async (
   return result.rows[0];
 };
 
-// User must be authenticated
-// User must be admin
-// User with target ID must exist
-// Fetch bookings where
-// customer_id = target user
-// status = 'active'
-// If any active booking exists then deny deletion
-// Else delete user
-// Return success response
 const deleteUser = async (
   user: JwtPayload | undefined,
   targetIdParam: string
@@ -97,15 +88,34 @@ const deleteUser = async (
   }
 
   if (user.role !== "admin") {
-    ("Unauthorized, Only admins can delete users");
+    throw new Error("Unauthorized, only admins can delete users.");
   }
 
-  const result = await pool.query(` DELETE FROM users WHERE id = $1`, [
-    targetIdParam,
+  const targetId = Number(targetIdParam);
+
+  const userCheck = await pool.query(`SELECT * FROM users WHERE id = $1`, [
+    targetId,
+  ]);
+
+  if (userCheck.rowCount === 0) {
+    throw new Error("User not found");
+  }
+
+  const activeBookings = await pool.query(
+    `SELECT id FROM bookings WHERE customer_id = $1 AND status = 'active'`,
+    [targetId]
+  );
+
+  if (activeBookings.rowCount && activeBookings.rowCount > 0) {
+    throw new Error("Cannot delete user: user has active bookings");
+  }
+
+  const result = await pool.query(`DELETE FROM users WHERE id = $1`, [
+    targetId,
   ]);
 
   if (result.rowCount === 0) {
-    throw new Error("User not found.");
+    throw new Error("Failed to delete user");
   }
 
   return true;

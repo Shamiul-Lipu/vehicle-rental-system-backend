@@ -86,9 +86,30 @@ const updateVehicle = async (req: Request, res: Response) => {
   }
 };
 
+const deleteVehicle = async (req: Request, res: Response) => {
+  try {
+    const result = await VehiclesServices.deleteVehicle(
+      req.user,
+      req.params.vehicleId as string
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Vehicle deleted successfully",
+    });
+  } catch (err: any) {
+    res.status(400).json({
+      success: false,
+      message: err.message || "Vehicle deletion failed",
+      errors: err.constraint || err.message,
+    });
+  }
+};
+
 export const VehiclesControllers = {
   createVehicles,
   getAllVehicles,
   getVehicleById,
   updateVehicle,
+  deleteVehicle,
 };

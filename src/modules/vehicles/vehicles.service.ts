@@ -13,16 +13,16 @@ const createVehicles = async (
     availability_status,
   } = payload;
   if (!user) {
-    throw new Error("Unauthorized: user token missing.");
+    throw new Error("Unauthorized, user token missing.");
   }
 
   if (user.role !== "admin") {
-    throw new Error("Unauthorized: only admins can delete users.");
+    throw new Error("Unauthorized, only admins can delete users.");
   }
 
   const result = await pool.query(
     `INSERT INTO vehicles (vehicle_name, type, registration_number, daily_rent_price, availability_status)
-    VALUES ($1, $2, $3, $4, $5) `,
+    VALUES ($1, $2, $3, $4, $5) RETURNING *`,
     [
       vehicle_name,
       type,
@@ -104,9 +104,59 @@ const updateVehicle = async (
   return result.rows[0];
 };
 
+const deleteVehicle = async (
+  user: JwtPayload | undefined,
+  vehicleIdParam: string
+) => {
+  if (!user) {
+    throw new Error("Unauthorized, user token missing.");
+  }
+
+  if (user.role !== "admin") {
+    throw new Error("Unauthorized, only admins can delete vehicles");
+  }
+
+  const vehicleId = Number(vehicleIdParam);
+
+  const vehicleCheck = await pool.query(
+    `SELECT * FROM vehicles WHERE id = $1`,
+    [vehicleId]
+  );
+
+  if (vehicleCheck.rowCount === 0) {
+    throw new Error("Vehicle not found");
+  }
+
+  const activeBookings = await pool.query(
+    `SELECT id FROM bookings WHERE vehicle_id = $1 AND status = 'active'`,
+    [vehicleId]
+  );
+
+  if (activeBookings.rowCount && activeBookings.rowCount > 0) {
+    throw new Error("Cannot delete vehicle: it has active bookings");
+  }
+
+  // Delete past bookings (cancelled or returned)
+  await pool.query(
+    `DELETE FROM bookings WHERE vehicle_id = $1 AND status != 'active'`,
+    [vehicleId]
+  );
+
+  const result = await pool.query(`DELETE FROM vehicles WHERE id = $1`, [
+    vehicleId,
+  ]);
+
+  if (result.rowCount === 0) {
+    throw new Error("Failed to delete vehicle");
+  }
+
+  return true;
+};
+
 export const VehiclesServices = {
   createVehicles,
   getAllVehicles,
   getVehicleById,
   updateVehicle,
+  deleteVehicle,
 };
